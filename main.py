@@ -10,22 +10,26 @@ from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filte
 from google import genai
 import database
 
-# Render Port Detection အတွက် Dummy Web Server
+# Render Port Detection နှင့် Health Check (HEAD/GET) အတွက် Web Server
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"Bot is running successfully!")
 
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
 def run_web_server():
     port = int(os.environ.get("PORT", 8080))
     server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-# Web Server ကို Thread သီးသန့်ဖြင့် Background တွင် Run ခိုင်းခြင်း
+# Background Thread အဖြစ် Web Server ကို Run ခိုင်းခြင်း
 threading.Thread(target=run_web_server, daemon=True).start()
 
-# Warnings များ ပိတ်ထားခြင်း
+# Python Warnings များ ခဏ ပိတ်ထားခြင်း
 warnings.filterwarnings("ignore")
 
 load_dotenv(override=True)
@@ -44,7 +48,7 @@ def is_bad_word(text: str) -> bool:
 
 database.init_db()
 
-# Synchronous Gemini Call Function
+# Synchronous Gemini Function
 def call_gemini(prompt: str) -> str:
     response = gemini_client.models.generate_content(
         model='gemini-3.6-flash',
@@ -65,7 +69,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = user.first_name or "Member"
     text = message.text
 
-    # Bad Word Check
+    # Bad Word Moderation System
     if is_bad_word(text):
         warn_count = database.add_warn(chat_id, user_id)
 
@@ -82,7 +86,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await message.reply_text(f"❌ Ban ရန် Bot တွင် Admin Permission မရှိပါ။")
         return
 
-    # Gemini AI Fast Response Engine
+    # Gemini AI System Prompt & Processing
     system_instruction = (
         "မင်းက Telegram Group ထဲက ဖော်ရွေပြီး ချစ်စရာကောင်းတဲ့ မိန်းကလေး သူငယ်ချင်းတစ်ယောက်ပါ။ "
         "စကားပြောရင် မိန်းကလေးတစ်ယောက်လို ပေါ့ပေါ့ပါးပါး သူငယ်ချင်းလို မြန်မာလို စာပြန်ပါ။ "
@@ -92,7 +96,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     full_prompt = f"{system_instruction}\n\n{user_name}: {text}"
 
     try:
-        # Async-safe thread execution
+        # Non-blocking Async Thread Execution
         ai_response = await asyncio.to_thread(call_gemini, full_prompt)
         if ai_response:
             await message.reply_text(ai_response)
