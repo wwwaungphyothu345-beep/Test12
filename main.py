@@ -1,28 +1,28 @@
 import os
+import logging
+import warnings
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
+from dotenv import load_dotenv
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from google import genai
+import database
 
-# Render Port အတွက် Web Server အသေးလေး
+# Render Port Detection အတွက် Dummy Web Server
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot is running!")
+        self.wfile.write(b"Bot is running successfully!")
 
 def run_web_server():
     port = int(os.environ.get("PORT", 8080))
     server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-# Web Server ကို Background မှာ Run ခိုင်းခြင်း
-threading.Thread(target=run_web_server, daemon=True).start()import os
-import logging
-import warnings
-from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
-from google import genai
-import database
+# Web Server ကို Thread သီးသန့်ဖြင့် Background တွင် Run ခိုင်းခြင်း
+threading.Thread(target=run_web_server, daemon=True).start()
 
 # Warnings များ ပိတ်ထားခြင်း
 warnings.filterwarnings("ignore")
@@ -84,7 +84,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-3.6-flash',
+            model='gemini-2.5-flash',
             contents=full_prompt
         )
         if response.text:
