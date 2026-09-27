@@ -1,6 +1,7 @@
 import os
 import logging
 import warnings
+import asyncio
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 from dotenv import load_dotenv
@@ -43,6 +44,14 @@ def is_bad_word(text: str) -> bool:
 
 database.init_db()
 
+# Synchronous Gemini Call Function
+def call_gemini(prompt: str) -> str:
+    response = gemini_client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=prompt
+    )
+    return response.text.strip() if response.text else ""
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.effective_message
     chat = update.effective_chat
@@ -83,12 +92,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     full_prompt = f"{system_instruction}\n\n{user_name}: {text}"
 
     try:
-        response = gemini_client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=full_prompt
-        )
-        if response.text:
-            await message.reply_text(response.text.strip())
+        # Async-safe thread execution
+        ai_response = await asyncio.to_thread(call_gemini, full_prompt)
+        if ai_response:
+            await message.reply_text(ai_response)
     except Exception as e:
         print(f"AI Error: {e}")
 
