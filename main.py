@@ -1,4 +1,21 @@
 import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+
+# Render Port အတွက် Web Server အသေးလေး
+class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running!")
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
+    server.serve_forever()
+
+# Web Server ကို Background မှာ Run ခိုင်းခြင်း
+threading.Thread(target=run_web_server, daemon=True).start()import os
 import logging
 import warnings
 from dotenv import load_dotenv
